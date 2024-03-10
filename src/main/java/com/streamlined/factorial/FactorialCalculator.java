@@ -1,6 +1,8 @@
 package com.streamlined.factorial;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.RecursiveTask;
 
 public class FactorialCalculator {
@@ -10,8 +12,6 @@ public class FactorialCalculator {
 	}
 
 	private static class FactorialTask extends RecursiveTask<BigInteger> {
-
-		private static final int RANGE_LENGTH = 10;
 
 		private final int start;
 		private final int finish;
@@ -23,23 +23,40 @@ public class FactorialCalculator {
 
 		@Override
 		protected BigInteger compute() {
-			if (finish - start + 1 <= RANGE_LENGTH) {
-				return calculate();
+			if (finish == start) {
+				return BigInteger.valueOf(start);
+			} else if (finish - start == 1) {
+				return BigInteger.valueOf(start).multiply(BigInteger.valueOf(finish));
 			} else {
-				final int middle = (start + finish) / 2;
-				FactorialTask task1 = new FactorialTask(start, middle);
-				FactorialTask task2 = new FactorialTask(middle + 1, finish);
-				invokeAll(task1, task2);
-				return task1.join().multiply(task2.join());
+				List<FactorialTask> tasks = distributeTasks();
+				invokeAll(tasks);
+				return computeResult(tasks);
 			}
 		}
 
-		private BigInteger calculate() {
+		private List<FactorialTask> distributeTasks() {
+			final int workerCount = getNumberOfWorkers();
+			final int workerRangeLength = (finish - start + 1) / workerCount + 1;
+			List<FactorialTask> tasks = new ArrayList<>(workerCount);
+			int from = start;
+			for (int k = 0; k < workerCount && from <= finish; k++) {
+				int to = Math.min(from + workerRangeLength - 1, finish);
+				tasks.add(new FactorialTask(from, to));
+				from = to + 1;
+			}
+			return tasks;
+		}
+
+		private BigInteger computeResult(List<FactorialTask> tasks) {
 			BigInteger value = BigInteger.ONE;
-			for (int k = start; k <= finish; k++) {
-				value = value.multiply(BigInteger.valueOf(k));
+			for (var task : tasks) {
+				value = value.multiply(task.join());
 			}
 			return value;
+		}
+
+		private int getNumberOfWorkers() {
+			return Runtime.getRuntime().availableProcessors();
 		}
 
 	}
