@@ -6,7 +6,7 @@ class FactorialCalculatorPerformanceTest {
 
 	@Test
 	void measureExecutionTime() {
-		int[] limits = new int[] { 10, 100, 1000, 10_000, 100_000 };
+		int[] limits = new int[] { 10, 10, 100, 100, 1000, 1000, 10_000, 10_000, 100_000, 100_000 };
 		var calculator = new FactorialCalculator();
 		for (var limit : limits) {
 			long startTime = System.currentTimeMillis();

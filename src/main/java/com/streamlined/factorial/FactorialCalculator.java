@@ -3,20 +3,33 @@ package com.streamlined.factorial;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentNavigableMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveTask;
 
 public class FactorialCalculator {
 
+	private final ConcurrentNavigableMap<Integer, BigInteger> computedResults;
 	private final ForkJoinPool pool;
 
 	public FactorialCalculator() {
-		this.pool = (ForkJoinPool) Executors.newWorkStealingPool(ForkJoinPool.getCommonPoolParallelism());
+		computedResults = new ConcurrentSkipListMap<>();
+		pool = (ForkJoinPool) Executors.newWorkStealingPool(ForkJoinPool.getCommonPoolParallelism());
 	}
 
 	public BigInteger compute(int number) {
-		return new FactorialTask(2, number).compute();
+		BigInteger result;
+		var floorEntry = computedResults.floorEntry(number);
+		if (floorEntry == null) {
+			result = new FactorialTask(2, number).compute();
+		} else {
+			var intermediateResult = new FactorialTask(floorEntry.getKey().intValue() + 1, number).compute();
+			result = intermediateResult.multiply(floorEntry.getValue());
+		}
+		computedResults.put(number, result);
+		return result;
 	}
 
 	private class FactorialTask extends RecursiveTask<BigInteger> {
